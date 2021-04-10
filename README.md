@@ -33,7 +33,7 @@ This repository contains a rails application [template](https://guides.rubyonrai
   - deployem
   - rabl
   - gon
-  - resque", require: "resque/server
+  - resque
   - font-awesome-rails
   - spire
   - aws-sdk-s3
