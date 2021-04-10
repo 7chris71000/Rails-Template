@@ -56,7 +56,7 @@ This repository contains a rails application [template](https://guides.rubyonrai
   - Initial git comit and push to repository
   - ... and more (to be added in future releases)
 
-_Note: If you have any problems running this application using the above steps please submit an issue. If you found your own solution feel free to submit a pull request updating this README. Thanks for your help!_
+_Note: If you have any problems running this application using the above steps please submit an issue. If you found your own solution feel free to submit a pull request. Thanks for your help!_
 
 Contributors:
 
