@@ -30,42 +30,16 @@ def setup_gems
     gem "faker"
   end
 
-  # This used to work then it didnt... ¯\_(ツ)_/¯
+  # This only sometimes works... ¯\_(ツ)_/¯
   insert_into_file "Gemfile", "#ruby-gemset=#{@app_path}"
 end
 
 def setup_gemset
-  # say "Setting up gemset", :blue
-  # run "rm .ruby-version"
+  say "Setting up gemset", :blue
 
-  # rvm_list = `rvm list`.gsub(Regexp.new("\e\\[.?.?.?m"), "")
-  # desired_ruby = rvm_list.match(/=\* (ruby[^ ]+)|=> (ruby[^ ]+)/)[1]
+  setup_gems
 
-  # Create the gemset
-  # run "rvm #{desired_ruby} gemset create #{@app_path}"
-  # run "rvm use #{desired_ruby}@#{@app_path}"
-  # require "pry"; binding.pry
-  # # run "gem install bundler"
-
-  # # Need to strip colors in case rvm_pretty_print_flag is enabled in user"s .rvmrc
-  # rvm_list = `rvm list`.gsub(Regexp.new("\e\\[.?.?.?m"), "")
-
-  # desired_ruby = rvm_list.match(/=\* (ruby[^ ]+)|=> (ruby[^ ]+)/)[1]
-  # gemset_name = @app_name
-
-  # # Create the gemset
-  # run "rvm #{desired_ruby} gemset create #{gemset_name}"
-
-  # # Let us run shell commands inside our new gemset. Use this in other template partials.
-  # @rvm = "rvm use #{desired_ruby}@#{gemset_name}"
-
-  # # Create .rvmrc
-  # file ".rvmrc", @rvm
-
-  # # Make the .rvmrc trusted
-  # run "rvm rvmrc trust #{@app_path}"
-
-  # # Since the gemset is likely empty, manually install bundler so it can install the rest
+  say "Running bundler", :blue
   run "gem install bundler"
 end
 
@@ -75,6 +49,7 @@ def setup_devise
   environment 'config.action_mailer.default_url_options = { host: \'localhost\', port: 3000 }', env: "development"
   # maybe ask if they want to setup the production.rb
   generate :devise, "User"
+  rails_command "db:migrate"
 end
 
 def setup_cancancan
@@ -85,10 +60,16 @@ end
 def setup_rolify
   say "Setting up Rolify", :blue
   generate :rolify, "Role", "User"
+  rails_command "db:migrate"
 end
 
 def setup_rspec
   say "Setting up RSpec", :blue
+  # second iteration
+end
+
+def setup_heroku
+  say "Setting up heroku", :blue
   # second iteration
 end
 
@@ -106,6 +87,7 @@ def setup_react
 end
 
 def setup_controllers
+  # Sometimes hangs here and doesnt go further
   say "Generating Pages Controller", :blue
   generate(:controller, "Pages", "home")
   route 'root to: \'pages#home\''
@@ -124,7 +106,7 @@ end
 # Main
 source_paths
 
-setup_gems
+# setup_gems
 setup_gemset
 
 after_bundle do
@@ -145,21 +127,26 @@ after_bundle do
     setup_rolify
   end
 
-  if yes?("Would you like to test this project using RSpec?")
+  if yes?("\nWould you like to test this project using RSpec?")
     setup_rspec
   end
 
-
   remove_unnecessary_files
 
-  # git :init
-  # git add: '.'
-  # git commit: '-a -m \'Initial commit\''
+  if yes?("\nWould you like to create an inital commit?")
+    git :init
+    git add: '.'
+    git commit: '-a -m \'Initial commit\''
 
-  # if yes?("Would you like to push this initial commit to your GitHub/BitBucket/GitLab/etc?")
-  #   git remote: "add origin #{get_source_control_repo_name}"
-  # end
+    if yes?("\nWould you like to push this initial commit to your GitHub/BitBucket/GitLab/etc?")
+      git remote: "add origin #{get_source_control_repo_name}"
+    end
+  end
 
-  run "cd #{@app_name}"
-  say "#{@app_name} successfully created! 😀", :blue
+  if yes?("\nWould you like to setup heroku?")
+    setup_heroku
+  end
+
+  run "cd #{@app_path}"
+  say "#{@app_path} successfully created! 😀", :blue
 end
