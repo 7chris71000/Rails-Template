@@ -6,7 +6,7 @@ This repository contains a rails application [template](https://guides.rubyonrai
 
 - Install and configure [rvm](https://rvm.io/) with your desired version of ruby.
 - Change terminal directory to the location you will be storing your application.
-- Create a gemset on your desired ruby version. Spell it the same as you will be spelling the name of your rails application.
+- Create a gemset on your desired ruby version and set it as current. Spell it the same as you will be spelling the name of your rails application.
   - `$ rvm use <RUBY-VERSION>@<APPNAME> --create`
 - Install the rails gem. This is needed when you run `$ rails new ...`
   - `$ gem install rails`

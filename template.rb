@@ -17,8 +17,10 @@ def setup_gems
   gem "gon"
   gem "resque", require: "resque/server"
   gem "font-awesome-rails"
-  gem "spire", git: "https://github.com/bitesite/spire-ruby"
   gem "aws-sdk-s3", "~> 1"
+
+  gem "pry"
+
 
   gem_group :development do
     gem "pry"
@@ -28,10 +30,10 @@ def setup_gems
     gem "rspec-rails", "~> 5.0.0"
     gem "factory_bot_rails"
     gem "faker"
+    gem "dotenv-rails"
   end
 
-  # This only sometimes works... ¯\_(ツ)_/¯
-  insert_into_file "Gemfile", "#ruby-gemset=#{@app_path}"
+  inject_into_file "Gemfile", "#ruby-gemset=#{@app_path}"
 end
 
 def setup_gemset
@@ -41,6 +43,11 @@ def setup_gemset
 
   say "Running bundler", :blue
   run "gem install bundler"
+end
+
+def create_env
+  file ".env"
+  file ".env.tmpl"
 end
 
 def setup_devise
@@ -55,17 +62,98 @@ end
 def setup_cancancan
   say "Setting up CanCanCan", :blue
   generate "cancan:ability"
+
+  admin_method = <<~RUBY
+    def admin?
+      self.has_role? :admin
+    end
+  RUBY
+  
+  insert_into_file "app/models/user.rb", "\n#{admin_method}", :before => /^end/
 end
 
 def setup_rolify
   say "Setting up Rolify", :blue
   generate :rolify, "Role", "User"
   rails_command "db:migrate"
+
+  sessions_helper = <<~RUBY
+    module SessionsHelper
+      def admin?
+        current_user && current_user.admin?
+      end
+    end
+  RUBY
+  
+  file 'app/helpers/sessions_helper.rb', sessions_helper
+  
+  inject_into_file "app/controllers/application_controller.rb", "\n  include SessionsHelper", after: /^class ApplicationController < ActionController::Base/
+
+end
+
+def setup_spire
+  say "Setting up Spire Gem", :blue
+  # using inject_into_file so I can specify where in the gemfile this line should be added
+  inject_into_file "./Gemfile", "gem 'spire', git: 'https://github.com/bitesite/spire-ruby'\n", before: "#ruby-gemset=#{@app_path}"
+  
+  spire_config = <<~RUBY
+    Spire.configure do |config|
+      config.company = ENV["SPIRE_COMPANY"]
+      config.username = ENV["SPIRE_USERNAME"]
+      config.password = ENV["SPIRE_PASSWORD"]
+      config.host = ENV["SPIRE_HOST"]
+      config.port = ENV["SPIRE_PORT"]
+    end
+  RUBY
+
+  file "config/initializers/spire.rb", spire_config
+
+  if yes?("\nDo you have the Spire configuration variables?")
+    spire_company = ask("Spire Company:")
+    spire_host = ask("Spire Host:")
+    spire_port = ask("Spire Port:")
+    spire_username = ask("Spire Username:")
+    spire_password = ask("Spire Password:")
+  
+    spire_env_vars = <<~EOF
+      SPIRE_COMPANY=#{spire_company}
+      SPIRE_HOST=#{spire_host}
+      SPIRE_PORT=#{spire_port}
+      SPIRE_USERNAME=#{spire_username}
+      SPIRE_PASSWORD=#{spire_password}
+    EOF
+  
+    inject_into_file ".env", spire_env_vars
+  end
+
+  spire_env_vars = <<~EOF
+    SPIRE_COMPANY=
+    SPIRE_HOST=
+    SPIRE_PORT=
+    SPIRE_USERNAME=
+    SPIRE_PASSWORD=
+  EOF
+
+  inject_into_file ".env.tmpl", spire_env_vars
+
+  run "bundle install"
+end
+
+def setup_git_ignore
+  insert_into_file ".gitignore", ".env.tmpl"
 end
 
 def setup_rspec
   say "Setting up RSpec", :blue
-  # second iteration
+  generate "rspec:install"
+
+  # delete views
+  run "rm -rf spec/views"
+  # delete requests
+  run "rm -rf spec/requests"
+  # delete helpers
+  run "rm -rf spec/helpers"
+
 end
 
 def setup_heroku
@@ -88,19 +176,26 @@ end
 
 def setup_controllers
   # Sometimes hangs here and doesnt go further
+  # research shows this could be a spring issue, restart terminal before running this template
   say "Generating Pages Controller", :blue
   generate(:controller, "Pages", "home")
   route 'root to: \'pages#home\''
 end
 
 def remove_unnecessary_files
+  say "Removing Unnecessary Files.", :blue
   run "rm .ruby-version"
   run "rm app/javascript/packs/hello_react.jsx"
 end
 
-def get_source_control_repo_name
+def get_source_control_info
   # ask user if they would like to push to their source control, if so get their url
-  ask "Please provide your repository link (eg: git@github.com:<YOUR NAME>/<REPO NAME>.git)"
+  @source_control_remote = ask "Please provide your repository link (eg: git@github.com:<YOUR NAME>/<REPO NAME>.git)"
+end
+
+def stop_spring
+  # This fixes the hanging controller generation call
+  run "spring stop"
 end
 
 # Main
@@ -110,10 +205,17 @@ source_paths
 setup_gemset
 
 after_bundle do
+  stop_spring
+  
   setup_react
   setup_controllers
+  create_env
 
   setup_db
+
+  if yes?("\nWould you like to test this project using RSpec?")
+    setup_rspec
+  end
 
   if yes?("\nWill this project require Devise?")
     setup_devise
@@ -127,8 +229,8 @@ after_bundle do
     setup_rolify
   end
 
-  if yes?("\nWould you like to test this project using RSpec?")
-    setup_rspec
+  if yes?("\nWill this project be integrated with Spire?")
+    setup_spire
   end
 
   remove_unnecessary_files
@@ -137,9 +239,12 @@ after_bundle do
     git :init
     git add: '.'
     git commit: '-a -m \'Initial commit\''
+    setup_git_ignore
 
     if yes?("\nWould you like to push this initial commit to your GitHub/BitBucket/GitLab/etc?")
-      git remote: "add origin #{get_source_control_repo_name}"
+      get_source_control_info
+      git remote: "add origin #{@source_control_remote}"
+      git push: "-u origin master"
     end
   end
 
@@ -147,6 +252,8 @@ after_bundle do
     setup_heroku
   end
 
-  run "cd #{@app_path}"
   say "#{@app_path} successfully created! 😀", :blue
+
+  say "\n\nSwitch to your app by running:"
+  say "$ cd #{@app_path}", :blue
 end
