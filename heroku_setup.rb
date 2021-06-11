@@ -1,7 +1,5 @@
 # template to setup heroku with a new app using heroku-cli
 
-# use `template template_name.rb`
-
 def get_heroku_cli_location
   run("which heroku", capture: true)
 end
