@@ -19,9 +19,6 @@ def setup_gems
   gem "font-awesome-rails"
   gem "aws-sdk-s3", "~> 1"
 
-  gem "pry"
-
-
   gem_group :development do
     gem "pry"
   end
@@ -140,7 +137,11 @@ def setup_spire
 end
 
 def setup_git_ignore
-  insert_into_file ".gitignore", ".env.tmpl"
+  insert_into_file ".gitignore", <<~EOF
+    .env
+    .env.tmpl
+  EOF
+
 end
 
 def setup_rspec
@@ -231,6 +232,7 @@ after_bundle do
 
   if yes?("\nWill this project be integrated with Spire?")
     setup_spire
+    setup_git_ignore
   end
 
   remove_unnecessary_files
@@ -239,7 +241,6 @@ after_bundle do
     git :init
     git add: '.'
     git commit: '-a -m \'Initial commit\''
-    setup_git_ignore
 
     if yes?("\nWould you like to push this initial commit to your GitHub/BitBucket/GitLab/etc?")
       get_source_control_info
