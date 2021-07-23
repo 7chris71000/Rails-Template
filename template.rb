@@ -195,7 +195,6 @@ end
 def remove_unnecessary_files
   say "Removing Unnecessary Files.", :blue
   run "rm .ruby-version"
-  run "rm app/javascript/packs/hello_react.jsx"
 end
 
 def get_source_control_info
@@ -206,6 +205,10 @@ end
 def stop_spring
   # This fixes the hanging controller generation call
   run "spring stop"
+end
+
+def force_ssl
+  gsub_file "config/environments/production.rb", /# config.force_ssl = true/, "config.force_ssl = true"
 end
 
 # Main
@@ -237,6 +240,10 @@ after_bundle do
 
   if yes?("\nWill this project require Rolify?")
     setup_rolify
+  end
+
+  if yes?("\nWould you like to force SSL in production?")
+    force_ssl
   end
 
   if yes?("\nWill this project be integrated with Spire?")
