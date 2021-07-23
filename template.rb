@@ -18,7 +18,6 @@ def setup_gems
 
   gem_group :development do
     gem "pry"
-    gem "letter_opener"
   end
 
   gem_group :development, :test do
@@ -50,7 +49,6 @@ def setup_devise
 
   generate "devise:install"
   environment 'config.action_mailer.default_url_options = { host: \'localhost\', port: 3000 }', env: "development"
-  # maybe ask if they want to setup the production.rb
   generate :devise, "User"
   rails_command "db:migrate"
 end
@@ -168,7 +166,9 @@ def setup_rspec
 end
 
 def setup_mailers
-  gem "letter_opener"
+  gem_group :development do
+    gem "letter_opener"
+  end
   run "bundle install"
 
   # Setup letteropener as development
