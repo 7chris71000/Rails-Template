@@ -167,6 +167,41 @@ def setup_rspec
   run "rm -rf spec/helpers"
 end
 
+def setup_mailers
+  gem "letter_opener"
+  run "bundle install"
+
+  # Setup letteropener as development
+  development_config_vars = <<-EOF
+  config.action_mailer.delivery_method = :letter_opener
+  EOF
+  inject_into_file "config/environments/development.rb", development_config_vars, before: /^end/
+
+  
+  # Setup SMTP as production
+  production_config_vars = <<-EOF
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    address: "",
+    port: "",
+    user_name: ENV['SMTP_USER'],
+    password: ENV['SMTP_PASSWORD'],
+    authentication: "",
+    enable_starttls_auto: true
+  }
+  
+  # Mailer Options
+  if ENV['DEPLOYMENT_MODE'] == 'staging'
+    config.action_mailer.default_url_options = { :host => YOUR_STAGING_URL }
+  else
+    config.action_mailer.default_url_options = { :host => YOUR_PRODUCTION_URL }
+  end
+  EOF
+
+  # environment production_config_vars, env: "production"
+  inject_into_file "config/environments/production.rb", production_config_vars, before: /^end/
+end
+
 def setup_db
   say "Setting up database", :blue
   rails_command "db:create"
@@ -240,6 +275,10 @@ after_bundle do
 
   if yes?("\nWill this project require Rolify?")
     setup_rolify
+  end
+
+  if yes?("\nWould you like to setup your development and production Mailers?")
+    setup_mailers
   end
 
   if yes?("\nWould you like to force SSL in production?")
