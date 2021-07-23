@@ -198,7 +198,6 @@ def setup_mailers
   end
   EOF
 
-  # environment production_config_vars, env: "production"
   inject_into_file "config/environments/production.rb", production_config_vars, before: /^end/
 end
 
