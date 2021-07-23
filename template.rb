@@ -15,7 +15,6 @@ def setup_gems
   gem "resque", require: "resque/server"
   gem "font-awesome-rails"
   gem "aws-sdk-s3", "~> 1"
-  gem "pry"
 
   gem_group :development do
     gem "pry"
@@ -143,7 +142,10 @@ def setup_spire
 end
 
 def setup_git_ignore
-  insert_into_file ".gitignore", ".env.tmpl"
+  insert_into_file ".gitignore", <<~EOF
+    .env
+    .env.tmpl
+  EOF
 end
 
 def setup_rspec
@@ -163,6 +165,40 @@ def setup_rspec
   run "rm -rf spec/requests"
   # delete helpers
   run "rm -rf spec/helpers"
+end
+
+def setup_mailers
+  gem "letter_opener"
+  run "bundle install"
+
+  # Setup letteropener as development
+  development_config_vars = <<-EOF
+  config.action_mailer.delivery_method = :letter_opener
+  EOF
+  inject_into_file "config/environments/development.rb", development_config_vars, before: /^end/
+
+  
+  # Setup SMTP as production
+  production_config_vars = <<-EOF
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    address: "",
+    port: "",
+    user_name: ENV['SMTP_USER'],
+    password: ENV['SMTP_PASSWORD'],
+    authentication: "",
+    enable_starttls_auto: true
+  }
+  
+  # Mailer Options
+  if ENV['DEPLOYMENT_MODE'] == 'staging'
+    config.action_mailer.default_url_options = { :host => YOUR_STAGING_URL }
+  else
+    config.action_mailer.default_url_options = { :host => YOUR_PRODUCTION_URL }
+  end
+  EOF
+
+  inject_into_file "config/environments/production.rb", production_config_vars, before: /^end/
 end
 
 def setup_db
@@ -193,7 +229,6 @@ end
 def remove_unnecessary_files
   say "Removing Unnecessary Files.", :blue
   run "rm .ruby-version"
-  run "rm app/javascript/packs/hello_react.jsx"
 end
 
 def get_source_control_info
@@ -204,6 +239,10 @@ end
 def stop_spring
   # This fixes the hanging controller generation call
   run "spring stop"
+end
+
+def force_ssl
+  gsub_file "config/environments/production.rb", /# config.force_ssl = true/, "config.force_ssl = true"
 end
 
 # Main
@@ -237,8 +276,17 @@ after_bundle do
     setup_rolify
   end
 
+  if yes?("\nWould you like to setup your development and production Mailers?")
+    setup_mailers
+  end
+
+  if yes?("\nWould you like to force SSL in production?")
+    force_ssl
+  end
+
   if yes?("\nWill this project be integrated with Spire?")
     setup_spire
+    setup_git_ignore
   end
 
   remove_unnecessary_files
@@ -247,7 +295,6 @@ after_bundle do
     git :init
     git add: '.'
     git commit: '-a -m \'Initial commit\''
-    setup_git_ignore
 
     if yes?("\nWould you like to push this initial commit to your GitHub/BitBucket/GitLab/etc?")
       get_source_control_info
