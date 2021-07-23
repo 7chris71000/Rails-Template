@@ -9,9 +9,6 @@ end
 def setup_gems
   say "Setting up Gems", :blue
 
-  gem "devise"
-  gem "cancancan"
-  gem "rolify"
   gem "deployem"
   gem "rabl"
   gem "gon"
@@ -21,11 +18,10 @@ def setup_gems
 
   gem_group :development do
     gem "pry"
+    gem "letter_opener"
   end
 
   gem_group :development, :test do
-    gem "rspec-rails", "~> 5.0.0"
-    gem "factory_bot_rails"
     gem "faker"
     gem "dotenv-rails"
   end
@@ -49,6 +45,9 @@ end
 
 def setup_devise
   say "Setting up Devise", :blue
+  inject_into_file "./Gemfile", "gem 'devise'\n", before: "#ruby-gemset=#{@app_path}"
+  run "bundle install"
+
   generate "devise:install"
   environment 'config.action_mailer.default_url_options = { host: \'localhost\', port: 3000 }', env: "development"
   # maybe ask if they want to setup the production.rb
@@ -58,6 +57,9 @@ end
 
 def setup_cancancan
   say "Setting up CanCanCan", :blue
+  inject_into_file "./Gemfile", "gem 'cancancan'\n", before: "#ruby-gemset=#{@app_path}"
+  run "bundle install"
+
   generate "cancan:ability"
 
   admin_method = <<~RUBY
@@ -71,6 +73,9 @@ end
 
 def setup_rolify
   say "Setting up Rolify", :blue
+  inject_into_file "./Gemfile", "gem 'rolify'\n", before: "#ruby-gemset=#{@app_path}"
+  run "bundle install"
+
   generate :rolify, "Role", "User"
   rails_command "db:migrate"
 
@@ -141,11 +146,17 @@ def setup_git_ignore
     .env
     .env.tmpl
   EOF
-
 end
 
 def setup_rspec
   say "Setting up RSpec", :blue
+  gem_group :development, :test do
+    gem "rspec-rails"
+    gem "factory_bot_rails"
+  end
+
+  run "bundle install"
+
   generate "rspec:install"
 
   # delete views
@@ -154,12 +165,6 @@ def setup_rspec
   run "rm -rf spec/requests"
   # delete helpers
   run "rm -rf spec/helpers"
-
-end
-
-def setup_heroku
-  say "Setting up heroku", :blue
-  # second iteration
 end
 
 def setup_db
@@ -176,11 +181,15 @@ def setup_react
 end
 
 def setup_controllers
-  # Sometimes hangs here and doesnt go further
-  # research shows this could be a spring issue, restart terminal before running this template
   say "Generating Pages Controller", :blue
   generate(:controller, "Pages", "home")
   route 'root to: \'pages#home\''
+end
+
+def setup_heroku
+  say "Setting up heroku", :blue
+  
+  apply "heroku_setup.rb"
 end
 
 def remove_unnecessary_files
@@ -245,7 +254,7 @@ after_bundle do
     if yes?("\nWould you like to push this initial commit to your GitHub/BitBucket/GitLab/etc?")
       get_source_control_info
       git remote: "add origin #{@source_control_remote}"
-      git push: "-u origin master"
+      git push: "-u origin main"
     end
   end
 
