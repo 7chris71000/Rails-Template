@@ -41,6 +41,8 @@ This repository contains a rails application [template](https://guides.rubyonrai
   - rspec-rails
   - factory_bot_rails
   - faker
+  - letter_opener
+  - dotenv-rails
 
 - Sets up:
 
@@ -53,6 +55,10 @@ This repository contains a rails application [template](https://guides.rubyonrai
   - Cancancan
   - Rolify
   - Rspec
+  - Mailers (SMTP)
+  - Force SSL on production
+  - Integration with Spire
+  - .env file
   - Initial git comit and push to repository
   - Heroku app (staging and production)
   - ... and more (to be added in future releases)
